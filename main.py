@@ -1,4 +1,5 @@
 import asyncio
+import json
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,14 +31,14 @@ def get_integration_json():
                 "app_name": "Uptime Monitor",
                 "app_description": "A local uptime monitor",
                 "app_logo": "https://i.imgur.com/lZqvffp.png",
-                "app_url": "http://localhost:8000"
+                "app_url": "http://localhost:8000",
                 "background_color": "#fff",
             },
             "is_active": False,
             "integration_type": "interval",
             "key_features": ["- monitors websites"],
             "author": "Osinachi Chukwujama",
-            "website": "http://localhost:8000"
+            "website": "http://localhost:8000",
             "settings": [
                 {"label": "site-1", "type": "text", "required": True, "default": ""},
                 {"label": "site-2", "type": "text", "required": True, "default": ""},
@@ -48,7 +49,7 @@ def get_integration_json():
                     "default": "* * * * *",
                 },
             ],
-            "target_url": ""
+            "target_url": "",
             "tick_url": "http://localhost:8000/tick"
         }
     }
@@ -62,11 +63,10 @@ async def check_site_status(site: str):
         async with httpx.AsyncClient(timeout=5) as client:
             response = await client.get(site)
             status = "up" if response.status_code == 200 else "down"
-    except Exception:
-        status = "down"
+    except Exception as e:
+        status = f"down {e}"
 
-    return {"site": site, "status": status}
-
+    return f"site {site} is {status}"
 
 class Setting(BaseModel):
     label: str
@@ -89,13 +89,14 @@ async def monitor_task(payload: MonitorPayload):
             sites.append(setting.default)
 
     results = await asyncio.gather(*(check_site_status(site) for site in sites))
+    results = "\n".join(results)
+    
+    telex_format = {"message": results, "username": "Uptime Monitor", "event_name": "Uptime Check", "status": "success"}
+    headers = {"Content-Type": "application/json"}
 
-    telex_format = {"channel_id": payload.channel_id, "message": results}
-
-    # Send results to external webhook
     async with httpx.AsyncClient() as client:
-        await client.post(
-            f"https://ping.telex.im/return/{payload.channel_id}", json=results
+        res = await client.post(
+            f"https://ping.telex.im/return/{payload.channel_id}", json=telex_format, headers=headers
         )
 
 
