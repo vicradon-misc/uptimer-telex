@@ -37,6 +37,7 @@ def get_integration_json():
             "is_active": False,
             "integration_type": "interval",
             "key_features": ["- monitors websites"],
+            "category": "Monitoring",
             "author": "Osinachi Chukwujama",
             "website": "http://localhost:8000",
             "settings": [
