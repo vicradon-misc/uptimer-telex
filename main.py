@@ -97,6 +97,7 @@ async def monitor_task(payload: MonitorPayload):
     headers = {"Content-Type": "application/json"}
 
     async with httpx.AsyncClient() as client:
+        print(payload)
         res = await client.post(
             payload.return_url, json=telex_format, headers=headers
         )
