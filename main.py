@@ -7,6 +7,19 @@ from pydantic import BaseModel
 from typing import List, Optional
 import httpx
 
+class Setting(BaseModel):
+    label: str
+    type: str
+    required: bool
+    default: str
+
+
+class MonitorPayload(BaseModel):
+    channel_id: str
+    return_url: str
+    settings: List[Setting]
+
+
 app = FastAPI()
 
 # Configure CORS
@@ -23,7 +36,7 @@ def get_logo():
     return FileResponse("uptime.png")
 
 @app.get("/integration.json")
-def get_integration_json():
+def get_integration_json(request: Request):
     base_url = str(request.base_url).rstrip("/")
 
     integration_json = {
@@ -94,17 +107,6 @@ async def check_site_status(site: str, max_retries: int = 3, timeout: float = 10
             
         except Exception as e:
             return f"Site {site} is down (Unexpected Error: {str(e)})"
-class Setting(BaseModel):
-    label: str
-    type: str
-    required: bool
-    default: str
-
-
-class MonitorPayload(BaseModel):
-    channel_id: str
-    return_url: str
-    settings: List[Setting]
 
 
 async def monitor_task(payload: MonitorPayload):
@@ -127,6 +129,7 @@ async def monitor_task(payload: MonitorPayload):
 
     headers = {"Content-Type": "application/json"}
 
+    print(payload)
     if results:
         async with httpx.AsyncClient() as client:
             res = await client.post(
