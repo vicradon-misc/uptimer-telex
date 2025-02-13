@@ -115,7 +115,8 @@ async def monitor_task(payload: MonitorPayload):
             sites.append(setting.default)
 
     results = await asyncio.gather(*(check_site_status(site) for site in sites))
-    results = "\n".join(results)
+
+    results = "\n".join([res for res in results if isinstance(res, str)])
     
     telex_format = {
         "message": results, 
