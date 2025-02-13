@@ -9,12 +9,12 @@ This is an interval integration so you must define an interval in the settings f
 
 This is a FastAPI project and has its dependencies defined in the requirements.txt. This means you can use pip or any other package manager to install depdencies. For an easier install, use uv by following the steps below:
 
-1. **Install uv**: Ensure you have `uv` installed. You can install it using pip or another package manager:
+1. **Install uv**: You can install it using pip or another package manager:
     ```bash
     pip install uv
     ```
 
-2. **Sync dependencies**: Run the following command to synchronize dependencies:
+2. **Sync dependencies**: Run the following command to synchronize dependencies (basically installs dependencies if you haven't before):
     ```bash
     uv sync
     ```
@@ -23,6 +23,13 @@ This is a FastAPI project and has its dependencies defined in the requirements.t
     ```bash
     uv run main.py
     ```
+    
+    You could also run in watch mode using:
+
+   ```bash
+   source .venv/bin/active # .venv/Scripts/activate for Windows
+   uvicorn main:app --reload
+   ```
 
 The server should now be running and accessible at `http://localhost:8000`.
 
@@ -30,7 +37,7 @@ The server should now be running and accessible at `http://localhost:8000`.
 
 The integration JSON file defined at the route `/integration.json` defines all the details needed for this integration to work on Telex. Since it is an interval integration that doesn't need data, it only exposes a /tick_url endpoint. Telex will call this endpoint according to the cron interval defined in the settings. The JSON snippet below shows the uptime json for the deployed url at: https://telex-fastapi-uptime-monitor.onrender.com/integration.json. If you deploy it somewhere else, the `app_url`, `website`, and `tick_url` will be updated. 
 
-```
+```json
 {
   "data": {
     "date": {
@@ -109,12 +116,15 @@ The `/tick` endpoint accepts a `POST` request with the following JSON payload:
 }
 ```
 
-This data will be sent by Telex. The integration reads the settings to figure out the sites that must be called now, then sends a response, if any to the return_url. The channel_id has no exact use in this particular integration but could be extremely useful for an integration that must distinguish between channels, like a summarizer that defines an interval of 6 pm everyday, and must stores accumulated messages in its local storage, and summarize them (reach out to the devs for more ideas like this).
+This data will be sent by Telex each time the cron interval is reached. The default interval is defined as `* * * * *` which means every minute according to cron-syntax. Use https://crontab.guru for help defining cron schedules. The integration reads the settings to figure out the sites that must be called immediately, then sends a response, if any, to the `return_url` provided by Telex. 
+
+NB: The `channel_id` has no exact use in this particular integration but could be extremely useful for an integration that must distinguish between channels, like a summarizer that defines an interval of 6 pm every day, and must stores accumulated messages in its local storage (sqlite, postgres, txt file, whatever it may be), and summarize them (reach out to the devs for more ideas like this).
 
 ### Explanation:
 - `channel_id`: The ID of the Telex channel.
 - `return_url`: The URL where the monitoring results will be sent.
-- `settings`: An array of settings for the monitored sites. The settings are defined by the integration author and can only be used by the author. Telex only sends settings populated by user defined values back to the integration. 
+- `settings`: An array of settings for the monitored sites. The settings are defined by the integration author and can only be used by the author. Telex only sends the settings whenever the /tick_url is called.
+
 
 ### Response:
 - **202 Accepted**: The monitoring task has been accepted and is running in the background.
