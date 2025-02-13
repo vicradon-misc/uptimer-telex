@@ -78,6 +78,7 @@ class Setting(BaseModel):
 
 class MonitorPayload(BaseModel):
     channel_id: str
+    return_url: str
     settings: List[Setting]
 
 
@@ -97,7 +98,7 @@ async def monitor_task(payload: MonitorPayload):
 
     async with httpx.AsyncClient() as client:
         res = await client.post(
-            f"https://ping.telex.im/return/{payload.channel_id}", json=telex_format, headers=headers
+            payload.return_url, json=telex_format, headers=headers
         )
 
 
