@@ -1,10 +1,10 @@
 import asyncio
 import json
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import httpx
 
 app = FastAPI()
@@ -12,7 +12,7 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://staging.telextest.im", "http://telextest.im", "https://staging.telex.im", "https://telex.im"],
+    allow_origins=["http://staging.telextest.im", "http://telextest.im", "https://staging.telex.im", "https://telex.im"], # NB: telextest is a local url
     allow_credentials=True,
     allow_methods=["*"],  
     allow_headers=["*"],
@@ -24,6 +24,8 @@ def get_logo():
 
 @app.get("/integration.json")
 def get_integration_json():
+    base_url = str(request.base_url).rstrip("/")
+
     integration_json = {
         "data": {
             "date": {"created_at": "2025-02-09", "updated_at": "2025-02-09"},
@@ -31,7 +33,7 @@ def get_integration_json():
                 "app_name": "Uptime Monitor",
                 "app_description": "A local uptime monitor",
                 "app_logo": "https://i.imgur.com/lZqvffp.png",
-                "app_url": "http://localhost:8000",
+                "app_url": base_url,
                 "background_color": "#fff",
             },
             "is_active": False,
@@ -39,7 +41,7 @@ def get_integration_json():
             "key_features": ["- monitors websites"],
             "category": "Monitoring",
             "author": "Osinachi Chukwujama",
-            "website": "http://localhost:8000",
+            "website": base_url,
             "settings": [
                 {"label": "site-1", "type": "text", "required": True, "default": ""},
                 {"label": "site-2", "type": "text", "required": True, "default": ""},
@@ -51,24 +53,47 @@ def get_integration_json():
                 },
             ],
             "target_url": "",
-            "tick_url": "http://localhost:8000/tick"
+            "tick_url": f"{base_url}/tick"
         }
     }
 
     return integration_json
 
 
-async def check_site_status(site: str):
-    """Check if a site is up or down."""
-    try:
-        async with httpx.AsyncClient(timeout=5) as client:
+
+
+async def check_site_status(site: str, max_retries: int = 3, timeout: float = 10.0) -> Optional[str]:
+    transport = httpx.AsyncHTTPTransport(
+        retries=max_retries,
+        retry_backoff_factor=0.5,  # Each retry will wait {backoff factor} * (2 ** {retry number}) seconds
+    )
+
+    # Configure client with retry transport
+    async with httpx.AsyncClient(
+        transport=transport,
+        timeout=timeout,
+        follow_redirects=True
+    ) as client:
+        try:
             response = await client.get(site)
-            status = "up" if response.status_code == 200 else "down"
-    except Exception as e:
-        status = f"down {e}"
-
-    return f"site {site} is {status}"
-
+            
+            # Check if response indicates success
+            if 200 <= response.status_code < 400:
+                return None  # Site is up
+                
+            return f"Site {site} is down (HTTP {response.status_code})"
+            
+        except TimeoutException:
+            return f"Site {site} timed out after {timeout} seconds"
+            
+        except HTTPError as e:
+            return f"Site {site} is down (HTTP Error: {str(e)})"
+            
+        except TransportError as e:
+            return f"Site {site} is down (Transport Error: {str(e)})"
+            
+        except Exception as e:
+            return f"Site {site} is down (Unexpected Error: {str(e)})"
 class Setting(BaseModel):
     label: str
     type: str
@@ -93,14 +118,20 @@ async def monitor_task(payload: MonitorPayload):
     results = await asyncio.gather(*(check_site_status(site) for site in sites))
     results = "\n".join(results)
     
-    telex_format = {"message": results, "username": "Uptime Monitor", "event_name": "Uptime Check", "status": "success"}
+    telex_format = {
+        "message": results, 
+        "username": "Uptime Monitor", 
+        "event_name": "Uptime Check", 
+        "status": "success"
+    }
+
     headers = {"Content-Type": "application/json"}
 
-    async with httpx.AsyncClient() as client:
-        print(payload)
-        res = await client.post(
-            payload.return_url, json=telex_format, headers=headers
-        )
+    if results:
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                payload.return_url, json=telex_format, headers=headers
+            )
 
 
 @app.post("/tick", status_code=202)
