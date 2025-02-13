@@ -122,7 +122,7 @@ async def monitor_task(payload: MonitorPayload):
         "message": results, 
         "username": "Uptime Monitor", 
         "event_name": "Uptime Check", 
-        "status": "success"
+        "status": "error"
     }
 
     headers = {"Content-Type": "application/json"}
