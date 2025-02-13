@@ -76,10 +76,7 @@ def get_integration_json(request: Request):
 
 
 async def check_site_status(site: str, max_retries: int = 3, timeout: float = 10.0) -> Optional[str]:
-    transport = httpx.AsyncHTTPTransport(
-        retries=max_retries,
-        retry_backoff_factor=0.5,  # Each retry will wait {backoff factor} * (2 ** {retry number}) seconds
-    )
+    transport = httpx.AsyncHTTPTransport(retries=max_retries)
 
     # Configure client with retry transport
     async with httpx.AsyncClient(
@@ -96,13 +93,13 @@ async def check_site_status(site: str, max_retries: int = 3, timeout: float = 10
                 
             return f"Site {site} is down (HTTP {response.status_code})"
             
-        except TimeoutException:
+        except httpx.TimeoutException:
             return f"Site {site} timed out after {timeout} seconds"
             
-        except HTTPError as e:
+        except httpx.HTTPError as e:
             return f"Site {site} is down (HTTP Error: {str(e)})"
             
-        except TransportError as e:
+        except httpx.TransportError as e:
             return f"Site {site} is down (Transport Error: {str(e)})"
             
         except Exception as e:
