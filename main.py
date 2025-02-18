@@ -65,7 +65,7 @@ def get_integration_json(request: Request):
                     "default": "* * * * *",
                 },
             ],
-            "target_url": "",
+            "target_url": f"{base_url}/target",
             "tick_url": f"{base_url}/tick"
         }
     }
@@ -133,7 +133,11 @@ async def monitor_task(payload: MonitorPayload):
             res = await client.post(
                 payload.return_url, json=telex_format, headers=headers
             )
-
+            
+@app.post("/target", status_code=202)
+def monitor(payload: MonitorPayload, background_tasks: BackgroundTasks):
+    print(f"New data entered the channel {payload}")
+    return {"status": "success"}
 
 @app.post("/tick", status_code=202)
 def monitor(payload: MonitorPayload, background_tasks: BackgroundTasks):
