@@ -19,6 +19,10 @@ class MonitorPayload(BaseModel):
     return_url: str
     settings: List[Setting]
 
+class ChannelDataPayload(BaseModel):
+    channel_id: str
+    message: str
+    settings: List[Setting]
 
 app = FastAPI()
 
@@ -135,7 +139,7 @@ async def monitor_task(payload: MonitorPayload):
             )
             
 @app.post("/target", status_code=202)
-def monitor(payload: MonitorPayload, background_tasks: BackgroundTasks):
+def monitor(payload: ChannelDataPayload, background_tasks: BackgroundTasks):
     print(f"New data entered the channel {payload}")
     return {"status": "success"}
 
