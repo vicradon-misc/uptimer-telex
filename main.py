@@ -43,8 +43,8 @@ def get_integration_json(request: Request):
         "data": {
             "date": {"created_at": "2025-02-09", "updated_at": "2025-02-09"},
             "descriptions": {
-                "app_name": "Uptime Monitor",
-                "app_description": "A local uptime monitor",
+                "app_name": "Za Uptime Monitor with target_url",
+                "app_description": "An uptime monitor with target url",
                 "app_logo": "https://i.imgur.com/lZqvffp.png",
                 "app_url": base_url,
                 "background_color": "#fff",
@@ -52,7 +52,7 @@ def get_integration_json(request: Request):
             "is_active": False,
             "integration_type": "interval",
             "key_features": ["- monitors websites"],
-            "category": "Monitoring",
+            "integration_category": "Monitoring & Loggging",
             "author": "Osinachi Chukwujama",
             "website": base_url,
             "settings": [
